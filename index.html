@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+  </head>
+  <body>
+    <h1>Hypothekendaten</h1>
+    <table>
+      <tr>
+        <td><label for="initialDebt">Kreditsumme</label>:</td>
+        <td><input type="number" id="initialDebt" min="0"/></td>
+      </tr>
+      <tr>
+        <td><label for="interestRate">Gebundener Sollzinssatz</label>:</td>
+        <td><input type="number" id="interestRate" min="0"/>%</td>
+      </tr>
+      <tr>
+        <td><label for="initialRepaymentRate">Anfangstilgung pro Jahr</label>:</td>
+        <td><input type="number" id="initialRepaymentRate" min="0"/>%</td>
+        <td>oder</td>
+        <td><label for="durationInYears">Laufzeit in Jahren</label>:</td>
+        <td><input type="number" id="durationInYears" min="0"/></td>
+      </tr>
+    </table>
+    <h1>Hypothekenverlauf</h1>
+    <div id="mortgageSummary"><p/></div>
+    <h1>Restschuld</h1>
+    <div id="remainingDebt"><p/></div>
+    <h1>Graph</h1>
+    <canvas id="debtCanvas"></canvas>
+    <h1>Tilgungsplan</h1>
+    <div id="repaymentPlan"><p></p></div>
+  </body>
+
+  <script src="Chart.js"></script>
+  <script src="hypo.js" type="text/javascript"></script>
+
+<script lang="javascript">
+
+document.addEventListener('DOMContentLoaded', function() {
+    for (const elementId of ["initialDebt", "interestRate"]) {
+        document.getElementById(elementId).onchange = pasteRepaymentPlan;
+    }
+
+    document.getElementById("initialRepaymentRate").onchange = function() {
+      document.getElementById("durationInYears").value = "";
+      pasteRepaymentPlan();
+    }
+
+    document.getElementById("durationInYears").onchange = function() {
+      document.getElementById("initialRepaymentRate").value = "";
+      pasteRepaymentPlan();
+    }
+
+    pasteRepaymentPlan();
+}, false);
+
+console.log("bar");
+
+function pasteRepaymentPlan(event) {
+  const theDiv = document.getElementById("repaymentPlan");
+  const oldContent = theDiv.firstChild;
+
+  const initialDebt = document.getElementById("initialDebt").value;
+  const interestRate = document.getElementById("interestRate").value;
+  let initialRepaymentRate = document.getElementById("initialRepaymentRate").value;
+  const durationInYears = document.getElementById("durationInYears").value;
+
+  console.log("A");
+
+  if (initialDebt == 0) {
+    return;
+  }
+
+  console.log("B");
+
+  if (!(Number(initialRepaymentRate) > 0)) {
+    // no initial repayment rate given - see if there is a duration in years
+    if (!(Number(durationInYears) > 0)) {
+      return;
+    }
+
+    const durationInMonths = durationInYears * 12;
+    const exactInitialRepaymentRate = interestRate / (Math.pow(1 + interestRate / 100.0 / 12.0, durationInMonths) - 1);
+
+    // round up to two decimals
+    initialRepaymentRate = Math.ceil(exactInitialRepaymentRate * 100) / 100;
+  }
+
+  console.log("C");
+
+  const mortgageData = calculateMortgage(initialDebt, interestRate, initialRepaymentRate);
+
+  const durationInfo = function() {
+    const durationYears = Math.floor(mortgageData.duration / 12);
+    const durationMonths = mortgageData.duration - 12 * durationYears;
+
+    let result = "";
+
+    if (durationYears === 1) {
+        result += "1 Jahr";
+    } else if (durationYears > 1) {
+        result += durationYears + " Jahre";
+    }
+
+    if (durationYears > 0 && durationMonths > 0) {
+        result += ", ";
+    }
+
+    if (durationMonths === 1) {
+        result += "1 Monat";
+    } else if (durationMonths > 1) {
+        result += durationMonths + " Monate";
+    }
+
+    return result;
+  }();
+
+  const summaryTable = document.createElement("table");
+  for (const [label, value] of [
+    ["Anfangstilgung pro Jahr", mortgageData.initialRepaymentRatePercent + "% "],
+    ["Anzahl der Raten", Number(mortgageData.numberOfPayments.toFixed(3)) + " (" + durationInfo + ")"],
+    ["Monatsrate", mortgageData.firstRate],
+    ["letzte Rate", mortgageData.lastRate],
+    ["Zinszahlungen", mortgageData.totalInterestPaid]
+  ]) {
+    const row = document.createElement("tr");
+
+    for (const cellValue of [label + ":", value]) {
+      const cell = document.createElement("td");
+      const content = document.createTextNode(cellValue);
+      cell.appendChild(content);
+      row.appendChild(cell);
+    }
+
+    summaryTable.appendChild(row);
+  }
+
+  {    
+    const table = document.createElement("table");
+    const tableBody = document.createElement("tbody");
+   
+    for (const [monthIndex, month] of mortgageData.months.entries()) {
+      if (monthIndex % 12 == 11) {
+        const row = document.createElement("tr");
+
+        const cell1 = document.createElement("td");
+        const cellContent1 = document.createTextNode("Nach " + (monthIndex + 1) / 12 + " Jahren:");
+        cell1.appendChild(cellContent1);
+        row.appendChild(cell1);
+
+        const cell2 = document.createElement("td");
+        const cellContent2 = document.createTextNode(month.debt);
+        cell2.appendChild(cellContent2);
+        row.appendChild(cell2);
+
+        tableBody.appendChild(row);
+      }
+    }
+
+    table.appendChild(tableBody);
+
+    const remainingDebtDiv = document.getElementById("remainingDebt");
+    const oldContent = remainingDebtDiv.firstChild;
+    remainingDebtDiv.replaceChild(table, oldContent)
+  }
+
+  const summaryDiv = document.getElementById("mortgageSummary");
+  summaryDiv.replaceChild(summaryTable, summaryDiv.firstChild);
+
+  const table = document.createElement("table");
+  {
+    const header = document.createElement("thead");
+    const row = document.createElement("tr");
+
+    for (const column of ["Monat", "Rate", "Zins", "Tilgung", "Restschuld"]) {
+      const cell = document.createElement("td");
+      const cellContent = document.createTextNode(column);
+      cell.appendChild(cellContent);
+      row.appendChild(cell);
+    }
+
+    header.appendChild(row);
+    table.appendChild(header);
+  }
+
+  const tableBody = document.createElement("tbody");
+
+  let n = 0;
+  for (const month of mortgageData.months) {
+    const row = document.createElement("tr");
+
+    for (const column of [++n, month.totalPayment, month.interest, month.repayment, month.debt]) {
+      const cell = document.createElement("td");
+      const cellContent = document.createTextNode(column);
+      cell.appendChild(cellContent);
+      row.appendChild(cell);
+    }
+
+    tableBody.appendChild(row);
+  }
+
+  table.appendChild(tableBody);
+
+  theDiv.replaceChild(table, oldContent);
+
+  const ctx = document.getElementById("debtCanvas").getContext('2d');
+
+  let monthNumbers = [0].concat(mortgageData.months.map((_, i) => i + 1));
+  let debtForMonth = [Number(initialDebt)].concat(
+    mortgageData.months.map(data => Number(data.debt)));
+
+  const config = {
+     type: 'line',
+     data: {
+         labels: monthNumbers,
+         datasets: [{
+             label: "Restschuld",
+             //backgroundColor: 'rgb(255, 99, 132)',
+             borderColor: 'rgb(255, 99, 132)',
+             data: debtForMonth
+           }]
+         },
+      options: {}
+  }
+
+  const chart = new Chart(ctx, config);
+}
+
+</script>
+
+</html>
