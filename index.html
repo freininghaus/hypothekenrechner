@@ -56,8 +56,6 @@ document.addEventListener('DOMContentLoaded', function() {
     pasteRepaymentPlan();
 }, false);
 
-console.log("bar");
-
 function pasteRepaymentPlan(event) {
   const theDiv = document.getElementById("repaymentPlan");
   const oldContent = theDiv.firstChild;
@@ -67,13 +65,9 @@ function pasteRepaymentPlan(event) {
   let initialRepaymentRate = document.getElementById("initialRepaymentRate").value;
   const durationInYears = document.getElementById("durationInYears").value;
 
-  console.log("A");
-
   if (initialDebt == 0) {
     return;
   }
-
-  console.log("B");
 
   if (!(Number(initialRepaymentRate) > 0)) {
     // no initial repayment rate given - see if there is a duration in years
@@ -87,8 +81,6 @@ function pasteRepaymentPlan(event) {
     // round up to two decimals
     initialRepaymentRate = Math.ceil(exactInitialRepaymentRate * 100) / 100;
   }
-
-  console.log("C");
 
   const mortgageData = calculateMortgage(initialDebt, interestRate, initialRepaymentRate);
 
