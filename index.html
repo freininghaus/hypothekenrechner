@@ -18,7 +18,18 @@
       <tr>
         <td><label for="initialRepaymentRate">Anfangstilgung pro Jahr</label>:</td>
         <td><input type="number" id="initialRepaymentRate" min="0"/>%</td>
+      </tr>
+      <tr>
         <td>oder</td>
+      </tr>
+      <tr>
+        <td><label for="monthlyPayment">Monatsrate</label>:</td>
+        <td><input type="number" id="monthlyPayment" min="0"/></td>
+      </tr>
+      <tr>
+        <td>oder</td>
+      </tr>
+      <tr>
         <td><label for="remainingDebt">Restschuld</label>:</td>
         <td><input type="number" id="remainingDebt" min="0" value="0"/></td>
         <td>nach</td>
@@ -48,16 +59,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.getElementById("initialRepaymentRate").onchange = function() {
       document.getElementById("durationInYears").value = "";
+      document.getElementById("monthlyPayment").value = "";
+      pasteRepaymentPlan();
+    }
+
+    document.getElementById("monthlyPayment").onchange = function() {
+      document.getElementById("initialRepaymentRate").value = "";
+      document.getElementById("durationInYears").value = "";
       pasteRepaymentPlan();
     }
 
     document.getElementById("remainingDebt").onchange = function() {
       document.getElementById("initialRepaymentRate").value = "";
+      document.getElementById("monthlyPayment").value = "";
       pasteRepaymentPlan();
     }
 
     document.getElementById("durationInYears").onchange = function() {
       document.getElementById("initialRepaymentRate").value = "";
+      document.getElementById("monthlyPayment").value = "";
       pasteRepaymentPlan();
     }
 
@@ -71,6 +91,7 @@ function pasteRepaymentPlan(event) {
   const initialDebt = document.getElementById("initialDebt").value;
   const interestRate = document.getElementById("interestRate").value;
   let initialRepaymentRate = document.getElementById("initialRepaymentRate").value;
+  const monthlyPayment = document.getElementById("monthlyPayment").value;
   const remainingDebt = document.getElementById("remainingDebt").value;
   const durationInYears = document.getElementById("durationInYears").value;
 
@@ -79,17 +100,20 @@ function pasteRepaymentPlan(event) {
   }
 
   if (!(Number(initialRepaymentRate) > 0)) {
-    // no initial repayment rate given - see if there is a duration in years
-    if (!(Number(durationInYears) > 0)) {
-      return;
+    // no initial repayment rate given - see if there is a monthly payment or a duration in years
+    if (Number(monthlyPayment) > 0) {
+      initialRepaymentRate = 100 * 12 * monthlyPayment / initialDebt - interestRate;
+    } else {
+      if (!(Number(durationInYears) > 0)) {
+        return;
+      }
+
+      const durationInMonths = durationInYears * 12;
+      const exactInitialRepaymentRate = interestRate * (1 - remainingDebt / initialDebt) / (Math.pow(1 + interestRate / 100.0 / 12.0, durationInMonths) - 1);
+
+      // round up to two decimals
+      initialRepaymentRate = Math.ceil(exactInitialRepaymentRate * 100) / 100;
     }
-
-    const durationInMonths = durationInYears * 12;
-
-    const exactInitialRepaymentRate = interestRate * (1 - remainingDebt / initialDebt) / (Math.pow(1 + interestRate / 100.0 / 12.0, durationInMonths) - 1);
-
-    // round up to two decimals
-    initialRepaymentRate = Math.ceil(exactInitialRepaymentRate * 100) / 100;
   }
 
   const mortgageData = calculateMortgage(initialDebt, interestRate, initialRepaymentRate);
