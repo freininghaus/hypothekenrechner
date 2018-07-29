@@ -19,14 +19,17 @@
         <td><label for="initialRepaymentRate">Anfangstilgung pro Jahr</label>:</td>
         <td><input type="number" id="initialRepaymentRate" min="0"/>%</td>
         <td>oder</td>
-        <td><label for="durationInYears">Laufzeit in Jahren</label>:</td>
+        <td><label for="remainingDebt">Restschuld</label>:</td>
+        <td><input type="number" id="remainingDebt" min="0" value="0"/></td>
+        <td>nach</td>
         <td><input type="number" id="durationInYears" min="0"/></td>
+        <td><label for="durationInYears">Jahren</label></td>
       </tr>
     </table>
     <h1>Hypothekenverlauf</h1>
     <div id="mortgageSummary"><p/></div>
     <h1>Restschuld</h1>
-    <div id="remainingDebt"><p/></div>
+    <div id="remainingDebtSummary"><p/></div>
     <h1>Graph</h1>
     <canvas id="debtCanvas"></canvas>
     <h1>Tilgungsplan</h1>
@@ -48,6 +51,11 @@ document.addEventListener('DOMContentLoaded', function() {
       pasteRepaymentPlan();
     }
 
+    document.getElementById("remainingDebt").onchange = function() {
+      document.getElementById("initialRepaymentRate").value = "";
+      pasteRepaymentPlan();
+    }
+
     document.getElementById("durationInYears").onchange = function() {
       document.getElementById("initialRepaymentRate").value = "";
       pasteRepaymentPlan();
@@ -63,6 +71,7 @@ function pasteRepaymentPlan(event) {
   const initialDebt = document.getElementById("initialDebt").value;
   const interestRate = document.getElementById("interestRate").value;
   let initialRepaymentRate = document.getElementById("initialRepaymentRate").value;
+  const remainingDebt = document.getElementById("remainingDebt").value;
   const durationInYears = document.getElementById("durationInYears").value;
 
   if (initialDebt == 0) {
@@ -76,7 +85,8 @@ function pasteRepaymentPlan(event) {
     }
 
     const durationInMonths = durationInYears * 12;
-    const exactInitialRepaymentRate = interestRate / (Math.pow(1 + interestRate / 100.0 / 12.0, durationInMonths) - 1);
+
+    const exactInitialRepaymentRate = interestRate * (1 - remainingDebt / initialDebt) / (Math.pow(1 + interestRate / 100.0 / 12.0, durationInMonths) - 1);
 
     // round up to two decimals
     initialRepaymentRate = Math.ceil(exactInitialRepaymentRate * 100) / 100;
@@ -153,7 +163,7 @@ function pasteRepaymentPlan(event) {
 
     table.appendChild(tableBody);
 
-    const remainingDebtDiv = document.getElementById("remainingDebt");
+    const remainingDebtDiv = document.getElementById("remainingDebtSummary");
     const oldContent = remainingDebtDiv.firstChild;
     remainingDebtDiv.replaceChild(table, oldContent)
   }
