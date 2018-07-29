@@ -116,9 +116,15 @@ function pasteRepaymentPlan(event) {
     }
   }
 
-  const mortgageData = calculateMortgage(initialDebt, interestRate, initialRepaymentRate);
+  const monthsLimit = 1200;
+
+  const mortgageData = calculateMortgage(initialDebt, interestRate, initialRepaymentRate, monthsLimit);
 
   const durationInfo = function() {
+    if (mortgageData.duration == null) {
+      return "mehr als " + (monthsLimit / 12) + " Jahre";
+    }
+
     const durationYears = Math.floor(mortgageData.duration / 12);
     const durationMonths = mortgageData.duration - 12 * durationYears;
 
@@ -143,10 +149,18 @@ function pasteRepaymentPlan(event) {
     return result;
   }();
 
+  const numberOfPaymentsInfo = function() {
+    if (mortgageData.duration == null) {
+      return "mehr als " + monthsLimit;
+    } else {
+      return Number(mortgageData.numberOfPayments.toFixed(3));
+    }
+  }();
+
   const summaryTable = document.createElement("table");
   for (const [label, value] of [
     ["Anfangstilgung pro Jahr", mortgageData.initialRepaymentRatePercent + "% "],
-    ["Anzahl der Raten", Number(mortgageData.numberOfPayments.toFixed(3)) + " (" + durationInfo + ")"],
+    ["Anzahl der Raten", numberOfPaymentsInfo + " (" + durationInfo + ")"],
     ["Monatsrate", mortgageData.firstRate],
     ["letzte Rate", mortgageData.lastRate],
     ["Zinszahlungen", mortgageData.totalInterestPaid]
