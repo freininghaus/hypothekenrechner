@@ -35,7 +35,11 @@
         <td>nach</td>
         <td><input type="number" id="durationInYears" min="0"/></td>
         <td><label for="durationInYears">Jahren</label></td>
-      </tr>
+        <tr>
+          <td><label for="interestFixedDuration">Zinsbindung in Jahren</label>:</td>
+          <td><input type="number" id="interestFixedDuration" min="0" value="10"/></td>
+        </tr>
+        </tr>
     </table>
     <h1>Hypothekenverlauf</h1>
     <div id="mortgageSummary"><p/></div>
@@ -53,7 +57,7 @@
 <script lang="javascript">
 
 document.addEventListener('DOMContentLoaded', function() {
-    for (const elementId of ["initialDebt", "interestRate"]) {
+    for (const elementId of ["initialDebt", "interestRate", "interestFixedDuration"]) {
         document.getElementById(elementId).onchange = pasteRepaymentPlan;
     }
 
@@ -94,6 +98,7 @@ function pasteRepaymentPlan(event) {
   const monthlyPayment = document.getElementById("monthlyPayment").value;
   const remainingDebt = document.getElementById("remainingDebt").value;
   const durationInYears = document.getElementById("durationInYears").value;
+  const interestFixedDuration = document.getElementById("interestFixedDuration").value;
 
   if (initialDebt == 0) {
     return;
@@ -118,7 +123,7 @@ function pasteRepaymentPlan(event) {
 
   const monthsLimit = 1200;
 
-  const mortgageData = calculateMortgage(initialDebt, interestRate, initialRepaymentRate, monthsLimit);
+  const mortgageData = calculateMortgage(initialDebt, interestRate, initialRepaymentRate, interestFixedDuration, monthsLimit);
 
   const durationInfo = function() {
     if (mortgageData.duration == null) {
@@ -160,8 +165,13 @@ function pasteRepaymentPlan(event) {
   const summaryTable = document.createElement("table");
   for (const [label, value] of [
     ["Anfangstilgung pro Jahr", mortgageData.initialRepaymentRatePercent + "% "],
-    ["Anzahl der Raten", numberOfPaymentsInfo + " (" + durationInfo + ")"],
     ["Monatsrate", mortgageData.firstRate],
+    ["Restschuld nach " + interestFixedDuration + " Jahren", mortgageData.debtAfterFixedInterestDuration],
+    ["Gezahlte Zinsen nach " + interestFixedDuration + " Jahren", mortgageData.interestPaidDuringFixedInterestDuration],
+    ["", ""],
+    ["Wenn Zins und Rate konstant bleiben:", ""],
+    ["", ""],
+    ["Anzahl der Raten", numberOfPaymentsInfo + " (" + durationInfo + ")"],
     ["letzte Rate", mortgageData.lastRate],
     ["Zinszahlungen", mortgageData.totalInterestPaid]
   ]) {
